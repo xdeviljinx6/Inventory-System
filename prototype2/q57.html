@@ -211,10 +211,10 @@
     <div id="varianceModal" class="modal">
         <div class="modal-content" style="max-width: 800px;">
             <h2><i class="fas fa-balance-scale"></i> Inventory Variance Tracker</h2>
-            <p>Upload the <strong>FIFO Excel File</strong> to compare against the system inventory.</p>
+            <p>Upload a <strong>Previous Backup File</strong> to compare against the current system inventory.</p>
 
             <div class="item-input">
-                <label for="varianceFileInput">Select Excel File:</label>
+                <label for="varianceFileInput">Select Backup Excel File:</label>
                 <input type="file" id="varianceFileInput" accept=".xlsx, .xls">
             </div>
 
@@ -225,9 +225,9 @@
                     <thead>
                         <tr>
                             <th>Material Code</th>
-                            <th>System Qty</th>
-                            <th>Excel Qty (FIFO)</th>
-                            <th>Variance</th>
+                            <th>Current System Qty</th>
+                            <th>Backup File Qty</th>
+                            <th>Variance (Current - Backup)</th>
                         </tr>
                     </thead>
                     <tbody id="varianceTableBody">
@@ -1596,50 +1596,38 @@
                 try {
                     const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
 
-                    // Look for 'variance' sheet
-                    let targetSheetName = workbook.SheetNames.find(n => n.toLowerCase() === 'variance');
+                    // Look for 'Inventory_Backup' sheet, otherwise first sheet
+                    let targetSheetName = workbook.SheetNames.find(n => n === 'Inventory_Backup');
                     if (!targetSheetName) {
-                        // Fallback to second sheet if named "variance" logic fails, or just error?
-                        // Based on user request, it MUST be the variance sheet.
-                        // Let's try to be flexible but warn.
-                        targetSheetName = workbook.SheetNames[1]; // Often the summary sheet
-                        console.warn('Variance sheet not found by name, trying 2nd sheet.');
-                    }
-                    if (workbook.SheetNames.includes('variance')) {
-                        targetSheetName = 'variance';
+                        targetSheetName = workbook.SheetNames[0];
                     }
 
                     const worksheet = workbook.Sheets[targetSheetName];
-                    if (!worksheet) {
-                        throw new Error("Variance sheet not found.");
-                    }
                     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-                    // Parse Data from 'variance' sheet
-                    // Structure: Col B (Index 1) = Item Code, Col C (Index 2) = Qty
-                    const excelInventory = {};
+                    // Parse Data from Backup File
+                    // Structure: Col A (Index 0) = MATERIAL_CODE, Col B (Index 1) = STOCKING_QTY
+                    const backupInventory = {};
 
-                    // Iterate through rows
-                    for (let i = 0; i < jsonData.length; i++) {
+                    // Iterate through rows (assume row 0 is header)
+                    for (let i = 1; i < jsonData.length; i++) {
                         const row = jsonData[i];
-                        // Skip if row is empty or headers
-                        if (!row || row.length < 3) continue;
+                        if (!row || row.length < 1) continue;
 
-                        const itemCode = row[1]; // Column B
-                        const qty = row[2];      // Column C
+                        const itemCode = row[0];
+                        const stockingQtyStr = row[1];
 
-                        if (typeof itemCode === 'string' && itemCode.trim() !== '' && !itemCode.includes('*heading*')) {
+                        if (typeof itemCode === 'string' && itemCode.trim() !== '') {
                             const cleanCode = itemCode.trim();
-                            const cleanQty = parseFloat(qty);
+                            // Calculate numeric total from string breakdown (e.g., "100x5 | 20")
+                            // Uses existing system functions: formatStockingQty, calculateSingleStockingQtyTotal
+                            const cleanQty = calculateSingleStockingQtyTotal(formatStockingQty(stockingQtyStr));
 
-                            // Check if it looks like a valid item row
-                            if (!isNaN(cleanQty)) {
-                                excelInventory[cleanCode] = cleanQty;
-                            }
+                            backupInventory[cleanCode] = cleanQty;
                         }
                     }
 
-                    // Compare with System Data
+                    // Compare with Current System Data
                     const varianceResults = [];
                     const systemInventoryMap = {};
 
@@ -1650,18 +1638,19 @@
                     });
 
                     // Combine all keys
-                    const allKeys = new Set([...Object.keys(systemInventoryMap), ...Object.keys(excelInventory)]);
+                    const allKeys = new Set([...Object.keys(systemInventoryMap), ...Object.keys(backupInventory)]);
 
                     allKeys.forEach(key => {
                         const sysQty = systemInventoryMap[key] || 0;
-                        const excelQty = excelInventory[key] || 0;
-                        const variance = sysQty - excelQty;
+                        const backupQty = backupInventory[key] || 0;
+                        const variance = sysQty - backupQty;
 
-                        if (sysQty !== 0 || excelQty !== 0) {
+                        // Show if there is a variance OR if items exist in either list
+                        if (sysQty !== 0 || backupQty !== 0) {
                             varianceResults.push({
                                 code: key,
                                 sysQty,
-                                excelQty,
+                                backupQty,
                                 variance
                             });
                         }
@@ -1681,16 +1670,16 @@
                             let varianceColor = 'black';
                             let varianceText = res.variance.toLocaleString();
                             if (res.variance > 0) {
-                                varianceColor = 'green'; // Surplus
+                                varianceColor = 'green'; // Surplus (System has more than Backup)
                                 varianceText = `+${varianceText}`;
                             } else if (res.variance < 0) {
-                                varianceColor = 'red'; // Deficit
+                                varianceColor = 'red'; // Deficit (System has less than Backup)
                             }
 
                             tr.innerHTML = `
                                 <td>${res.code}</td>
                                 <td>${res.sysQty.toLocaleString()}</td>
-                                <td>${res.excelQty.toLocaleString()}</td>
+                                <td>${res.backupQty.toLocaleString()}</td>
                                 <td style="color: ${varianceColor}; font-weight: bold;">${varianceText}</td>
                             `;
                             varianceTableBody.appendChild(tr);
@@ -1700,7 +1689,7 @@
 
                 } catch (err) {
                     console.error(err);
-                    varianceErrorMessage.textContent = 'Error processing file. Please ensure it is a valid Excel file.';
+                    varianceErrorMessage.textContent = 'Error processing file. Please ensure it is a valid Backup/Excel file.';
                 }
             };
             reader.readAsArrayBuffer(file);
