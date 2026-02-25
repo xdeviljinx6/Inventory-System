@@ -1595,34 +1595,46 @@
             reader.onload = (e) => {
                 try {
                     const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-                    // Assuming data is in the first sheet
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
+
+                    // Look for 'variance' sheet
+                    let targetSheetName = workbook.SheetNames.find(n => n.toLowerCase() === 'variance');
+                    if (!targetSheetName) {
+                        // Fallback to second sheet if named "variance" logic fails, or just error?
+                        // Based on user request, it MUST be the variance sheet.
+                        // Let's try to be flexible but warn.
+                        targetSheetName = workbook.SheetNames[1]; // Often the summary sheet
+                        console.warn('Variance sheet not found by name, trying 2nd sheet.');
+                    }
+                    if (workbook.SheetNames.includes('variance')) {
+                        targetSheetName = 'variance';
+                    }
+
+                    const worksheet = workbook.Sheets[targetSheetName];
+                    if (!worksheet) {
+                        throw new Error("Variance sheet not found.");
+                    }
                     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-                    // Parse Data
+                    // Parse Data from 'variance' sheet
+                    // Structure: Col B (Index 1) = Item Code, Col C (Index 2) = Qty
                     const excelInventory = {};
-                    let currentItemCode = null;
 
-                    // Iterate through rows (start from index 0)
+                    // Iterate through rows
                     for (let i = 0; i < jsonData.length; i++) {
                         const row = jsonData[i];
-                        // Column A is index 0
-                        if (row[0]) {
-                            const val = String(row[0]).trim();
-                            if (val && val !== 'ITEMS & RR#' && val !== 'First IN First OUT') {
-                                currentItemCode = val;
-                            }
-                        }
+                        // Skip if row is empty or headers
+                        if (!row || row.length < 3) continue;
 
-                        // Column C (index 2) for "TOTAL"
-                        if (row[2] && String(row[2]).toUpperCase().includes('TOTAL')) {
-                            if (currentItemCode) {
-                                // Column E (index 4) for Stocks
-                                const stockVal = parseFloat(row[4]);
-                                if (!isNaN(stockVal)) {
-                                    excelInventory[currentItemCode] = stockVal;
-                                }
+                        const itemCode = row[1]; // Column B
+                        const qty = row[2];      // Column C
+
+                        if (typeof itemCode === 'string' && itemCode.trim() !== '' && !itemCode.includes('*heading*')) {
+                            const cleanCode = itemCode.trim();
+                            const cleanQty = parseFloat(qty);
+
+                            // Check if it looks like a valid item row
+                            if (!isNaN(cleanQty)) {
+                                excelInventory[cleanCode] = cleanQty;
                             }
                         }
                     }
