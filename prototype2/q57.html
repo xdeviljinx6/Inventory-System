@@ -20,7 +20,6 @@
         .add-item-icon-btn { color: white; border: none; border-radius: 10px; width: 40px; height: 40px; font-size: 1.5em; cursor: pointer; box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1); display: flex; justify-content: center; align-items: center; transition: all 0.2s; }
         .add-item-icon-btn:hover { transform: scale(1.05); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
         .add-item-icon-btn i { font-size: 0.7em; }
-        #openAddItemModalButton { background-color: #28a745; }
         #fileOpsButton { background-color: #17a2b8; }
         .main-buttons { display: flex; justify-content: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
         .main-buttons button { background-color: #007bff; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 1em; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s ease; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
@@ -44,8 +43,8 @@
         .modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
         .modal-actions button { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 1em; font-weight: 600; color: white; transition: all 0.2s; }
         .modal-actions button:hover { transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-        #confirmImportButton, #saveBreakdownButton, #confirmAddItemButton, #confirmWithdrawButton, #restoreButton, #confirmBulkClearButton, #confirmBulkWithdrawButton, #confirmBulkDeliveryButton, #confirmUnlockButton { background-color: #10b981; }
-        #cancelImportButton, #cancelBreakdownButton, #cancelAddItemButton, #deleteItemInModalButton, #cancelWithdrawButton, #cancelFileOps, #cancelClearChoice, #cancelBulkClear, #cancelBulkWithdraw, #cancelBulkDelivery, #cancelUnlockButton { background-color: #ef4444; }
+        #confirmImportButton, #saveBreakdownButton, #confirmWithdrawButton, #restoreButton, #confirmBulkClearButton, #confirmBulkWithdrawButton, #confirmBulkDeliveryButton, #confirmUnlockButton { background-color: #10b981; }
+        #cancelImportButton, #cancelBreakdownButton, #deleteItemInModalButton, #cancelWithdrawButton, #cancelFileOps, #cancelClearChoice, #cancelBulkClear, #cancelBulkWithdraw, #cancelBulkDelivery, #cancelUnlockButton { background-color: #ef4444; }
         #backupButton { background-color: #0ea5e9; }
         #exportExcelButton { background-color: #6b7280; }
         #triggerClearAllButton { background-color: #dc3545; }
@@ -169,7 +168,6 @@
             <button id="lockSystemButton" class="add-item-icon-btn" title="System Locked" style="background-color: #dc3545;"><i class="fas fa-lock"></i></button>
             <button id="darkModeToggle" class="add-item-icon-btn" title="Toggle Dark Mode" style="background-color: #6c757d;"><i class="fas fa-moon"></i></button>
             <button id="fileOpsButton" class="add-item-icon-btn" title="File Operations"><i class="fas fa-folder-open"></i></button>
-            <button id="openAddItemModalButton" class="add-item-icon-btn" title="Add New Item">+</button>
         </div>
         <div id="errorMessage" class="error-message"></div>
         <div class="main-buttons" style="justify-content: center;">
@@ -287,7 +285,6 @@
     </div>
     <div id="importDataModal" class="modal"> <div class="modal-content"> <h2>Import Data from Excel</h2> <div class="item-input"> <label for="excelSheetSelect">Select Sheet:</label> <select id="excelSheetSelect"></select> </div> <div class="item-input"> <label for="stockingQtyDateSelectModal">Select Stocking Qty Column (Optional):</label> <select id="stockingQtyDateSelectModal"></select> </div> <div id="importErrorMessageDiv" class="error-message"></div> <div class="modal-actions"> <button id="confirmImportButton">Import</button> <button id="cancelImportButton">Cancel</button> </div> </div> </div>
     <div id="editBreakdownModal" class="modal"> <div class="modal-content"> <h2>Edit Item Details</h2> <div class="item-input"> <label for="editBreakdownInput">Stocking Qty:</label> <input type="text" id="editBreakdownInput"> </div> <div id="dynamicRemarksContainer"></div> <div class="modal-actions"> <button id="saveBreakdownButton">Save</button> <button id="cancelBreakdownButton">Cancel</button> <button id="deleteItemInModalButton">Delete Item</button> </div> </div> </div>
-    <div id="addItemModal" class="modal"> <div class="modal-content"> <h2>Add New Inventory Item</h2> <div class="item-input"> <label for="addItemCodeInput">MATERIAL CODE:</label> <input type="text" id="addItemCodeInput" placeholder="e.g., BAG-A19.5X35PE" required> </div> <div class="item-input"> <label for="addItemBreakdownInput">Stocking Qty:</label> <input type="text" id="addItemBreakdownInput" placeholder="e.g., 244,800 | 100x2 (optional)"> </div> <div id="addItemErrorMessage" class="error-message"></div> <div class="modal-actions"> <button id="confirmAddItemButton">Add Item</button> <button id="cancelAddItemButton">Cancel</button> </div> </div> </div>
         <div id="fileOpsModal" class="modal">
         <div class="modal-content">
             <h2>File Operations</h2>
@@ -409,7 +406,6 @@
         materialCodeSort = document.getElementById('materialCodeSort'),
         searchBar = document.getElementById('searchBar'),
         openImportModalButton = document.getElementById('openImportModalButton'),
-        openAddItemModalButton = document.getElementById('openAddItemModalButton'),
         historyTableBody = document.getElementById('historyTableBody'),
         clearHistoryButton = document.getElementById('clearHistoryButton'),
         fileOpsButton = document.getElementById('fileOpsButton'),
@@ -425,12 +421,6 @@
         saveBreakdownButton = document.getElementById('saveBreakdownButton'),
         cancelBreakdownButton = document.getElementById('cancelBreakdownButton'),
         deleteItemInModalButton = document.getElementById('deleteItemInModalButton'),
-        addItemModal = document.getElementById('addItemModal'),
-        addItemCodeInput = document.getElementById('addItemCodeInput'),
-        addItemBreakdownInput = document.getElementById('addItemBreakdownInput'),
-        confirmAddItemButton = document.getElementById('confirmAddItemButton'),
-        cancelAddItemButton = document.getElementById('cancelAddItemButton'),
-        addItemErrorMessage = document.getElementById('addItemErrorMessage'),
         fileOpsModal = document.getElementById('fileOpsModal'),
         backupButton = document.getElementById('backupButton'),
         restoreButton = document.getElementById('restoreButton'),
@@ -1398,7 +1388,6 @@
         });
 
         fileOpsButton.addEventListener('click', () => { checkAccess(() => { fileOpsModal.style.display = 'block'; }); });
-        openAddItemModalButton.addEventListener('click', () => { checkAccess(() => { addItemModal.style.display = 'block'; addItemCodeInput.value = ''; addItemBreakdownInput.value = ''; addItemErrorMessage.textContent = ''; addItemCodeInput.focus(); }); });
         openImportModalButton.addEventListener('click', () => { checkAccess(() => { fileOpsModal.style.display = 'none'; const fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.accept = ".xlsx, .xls"; fileInput.onchange = e => handleFileSelect(e.target.files[0]); fileInput.click(); }); });
 
         clearInventoryButton.addEventListener('click', () => { checkAccess(() => { fileOpsModal.style.display = 'none'; clearChoiceModal.style.display = 'block'; }); });
@@ -1423,7 +1412,6 @@
         cancelBulkClear.addEventListener('click', () => { bulkClearQtyModal.style.display = 'none'; });
         confirmBulkClearButton.addEventListener('click', () => { const selectedCheckboxes = Array.from(bulkClearList.querySelectorAll('input[type="checkbox"]:checked')); if (selectedCheckboxes.length === 0) { alert('Please select at least one item to clear.'); return; } const codesToClear = selectedCheckboxes.map(cb => cb.value); if (confirm(`Are you sure you want to clear the quantity for ${codesToClear.length} selected item(s)?`)) { codesToClear.forEach(code => { const targetRow = originalRowsOrder.find(row => row.dataset.code === code); if (targetRow) { targetRow.dataset.stockingQty = ''; targetRow.dataset.remarks = '[]'; targetRow.cells[1].innerHTML = ''; targetRow.cells[2].textContent = '0'; targetRow.cells[3].textContent = ''; } }); saveInventoryToLocalStorage(); logTransaction('BULK CLEAR QTY', `${codesToClear.length} items`, codesToClear.slice(0, 5).join(', ') + (codesToClear.length > 5 ? '...' : '')); applyFiltersAndSort(); alert(`Successfully cleared quantities for ${codesToClear.length} item(s).`); bulkClearQtyModal.style.display = 'none'; } });
         confirmImportButton.addEventListener('click', () => { if (!confirm("Importing new data will overwrite the current inventory. Do you want to continue?")) { return; } const sheetName = excelSheetSelect.value; const worksheet = loadedWorkbook.Sheets[sheetName]; const qtyColIndex = stockingQtyDateSelectModal.value; const dataForHeaders = XLSX.utils.sheet_to_json(worksheet, { header: 1 }); const codeHeaderRow = dataForHeaders[4] || []; const codeColIndex = codeHeaderRow.findIndex(h => typeof h === 'string' && h.trim().toUpperCase() === 'MATERIAL CODE'); if (codeColIndex === -1) { importErrorMessageDiv.textContent = `"MATERIAL CODE" column not found on Row 5.`; return; } inventoryTableBody.innerHTML = ''; originalRowsOrder = []; const range = XLSX.utils.decode_range(worksheet['!ref']); let importedCount = 0; for (let R = DATA_START_ROW_EXCEL_INDEX - 1; R <= range.e.r; ++R) { const codeCell = worksheet[XLSX.utils.encode_cell({c: codeColIndex, r: R})]; if (codeCell && codeCell.v) { importedCount++; const code = codeCell.w || codeCell.v.toString(); let stockingQty = ''; if (qtyColIndex) { const qtyCell = worksheet[XLSX.utils.encode_cell({c: parseInt(qtyColIndex), r: R})]; if (qtyCell) stockingQty = qtyCell.f || qtyCell.w || String(qtyCell.v) || ''; } renderRow({ code: code.trim(), stockingQty: stockingQty.toString(), remarks: Array(getBreakdownParts(formatStockingQty(stockingQty)).length).fill('') }, false); } } applyFiltersAndSort(); saveInventoryToLocalStorage(); logTransaction('IMPORT', '-', `Imported ${importedCount} items from sheet: ${sheetName}.`); importDataModal.style.display = 'none'; });
-        confirmAddItemButton.addEventListener('click', () => { const code = addItemCodeInput.value.trim(); if (!code) { addItemErrorMessage.textContent = 'MATERIAL CODE is required.'; return; } if (originalRowsOrder.some(row => row.dataset.code === code)) { addItemErrorMessage.textContent = 'This Material Code already exists.'; return; } const breakdown = addItemBreakdownInput.value.trim(); const newItem = { code: code, stockingQty: breakdown, remarks: Array(getBreakdownParts(formatStockingQty(breakdown)).length).fill('') }; renderRow(newItem); applyFiltersAndSort(); logTransaction('ADD ITEM', code, `Added with Qty: ${breakdown || '0'}`); addItemModal.style.display = 'none'; });
         editBreakdownInput.addEventListener('input', function() { const parts = getBreakdownParts(formatStockingQty(this.value)); const currentRemarks = Array.from(dynamicRemarksContainer.querySelectorAll('input')).map(input => input.value); generateRemarksInputs(parts.length, currentRemarks); });
         saveBreakdownButton.addEventListener('click', () => { if (!currentEditingRow) return; const oldStockingQty = currentEditingRow.dataset.stockingQty; const newStockingQty = editBreakdownInput.value; const newRemarks = Array.from(dynamicRemarksContainer.querySelectorAll('input')).map(input => input.value.trim()); currentEditingRow.dataset.stockingQty = newStockingQty; currentEditingRow.dataset.remarks = JSON.stringify(newRemarks); const formattedBreakdown = formatStockingQty(newStockingQty); const total = calculateSingleStockingQtyTotal(formattedBreakdown); currentEditingRow.cells[1].innerHTML = formatStockingQtyAndRemarksForDisplay(formattedBreakdown, newRemarks); currentEditingRow.cells[2].textContent = total.toLocaleString(); currentEditingRow.cells[3].textContent = newRemarks.filter(r => r).join(' | '); saveInventoryToLocalStorage(); logTransaction('EDIT ITEM', currentEditingRow.dataset.code, `Qty: "${oldStockingQty}" -> "${newStockingQty}"`); editBreakdownModal.style.display = 'none'; });
         deleteItemInModalButton.addEventListener('click', () => { if (!currentEditingRow) return; const codeToDelete = currentEditingRow.dataset.code; if (confirm(`Are you sure you want to delete ${codeToDelete}?`)) { const index = originalRowsOrder.findIndex(row => row === currentEditingRow); if (index > -1) originalRowsOrder.splice(index, 1); applyFiltersAndSort(); saveInventoryToLocalStorage(); logTransaction('DELETE ITEM', codeToDelete, 'Item and its stock removed.'); editBreakdownModal.style.display = 'none'; } });
@@ -1577,7 +1565,6 @@
         });
 
         cancelImportButton.addEventListener('click', () => { importDataModal.style.display = 'none' });
-        cancelAddItemButton.addEventListener('click', () => { addItemModal.style.display = 'none' });
         cancelBreakdownButton.addEventListener('click', () => { editBreakdownModal.style.display = 'none' });
         cancelBulkDelivery.addEventListener('click', () => { bulkDeliveriesModal.style.display = 'none' });
 
