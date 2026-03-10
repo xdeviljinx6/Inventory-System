@@ -1247,11 +1247,72 @@
                 bulkDelPalletCapacity.value = '';
                 bulkDelQtyInput.value = '';
                 bulkDelSharedRemarks.value = '';
-                bulkDelSharedDate.value = '';
+
+                // Set default Shared Date to today's date if empty
+                if (!bulkDelSharedDate.value) {
+                    const now = new Date();
+                    const year = now.getFullYear();
+                    const month = String(now.getMonth() + 1).padStart(2, '0');
+                    const day = String(now.getDate()).padStart(2, '0');
+                    bulkDelSharedDate.value = `${year}-${month}-${day}`;
+                }
+
                 renderBulkList();
 
                 bulkDeliveriesModal.style.display = 'block';
+                setTimeout(() => bulkDelItemSearch.focus(), 100);
             });
+        });
+
+        // Keydown Handlers for Bulk Deliveries Navigation
+        const bulkDelFields = [
+            bulkDelSharedRemarks,
+            bulkDelSharedDate,
+            bulkDelItemSearch,
+            bulkDelPalletCapacity,
+            bulkDelQtyInput
+        ];
+
+        bulkDelFields.forEach((field, index) => {
+            field.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (index < bulkDelFields.length - 1) {
+                        bulkDelFields[index + 1].focus();
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (index > 0) {
+                        bulkDelFields[index - 1].focus();
+                    }
+                }
+            });
+        });
+
+        bulkDelItemSearch.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault();
+                const capacity = bulkDelPalletCapacity.value.trim();
+                if (capacity !== '' && parseFloat(capacity) > 0) {
+                    bulkDelQtyInput.focus();
+                } else {
+                    bulkDelPalletCapacity.focus();
+                }
+            }
+        });
+
+        bulkDelPalletCapacity.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                bulkDelQtyInput.focus();
+            }
+        });
+
+        bulkDelQtyInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addToListBulkBtn.click();
+            }
         });
 
         bulkDelItemSearch.addEventListener('input', () => {
