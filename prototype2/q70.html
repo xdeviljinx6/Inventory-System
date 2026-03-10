@@ -128,6 +128,11 @@
         body.dark-mode #bulkClearList, body.dark-mode #bulkWithdrawList, body.dark-mode #bulkDeliveryList { border-color: #444; }
         body.dark-mode .bulk-clear-item { border-bottom-color: #333; }
         body.dark-mode .history-header h2 { color: #64b5f6; }
+        body.dark-mode #transactionHistoryToggle { background-color: #374151 !important; border-color: #4b5563 !important; }
+        body.dark-mode #transactionHistoryToggle h2 { color: #64b5f6 !important; }
+        body.dark-mode #transactionHistoryToggle i { color: #d1d5db !important; }
+        #transactionHistoryToggle:hover { background-color: #e2e6ea !important; }
+        body.dark-mode #transactionHistoryToggle:hover { background-color: #4b5563 !important; }
 
         .print-options-container { margin: 15px 0; display: flex; flex-direction: column; gap: 10px; border: 1px solid #e5e7eb; padding: 15px; border-radius: 12px; background-color: #f9fafb; }
         body.dark-mode .print-options-container { background-color: #374151; border-color: #4b5563; }
@@ -279,20 +284,25 @@
             </table>
         </div>
         <hr>
-        <div class="history-header">
-            <h2><i class="fas fa-history"></i> Transaction History</h2>
-            <button id="clearHistoryButton"><i class="fas fa-trash-alt"></i> Clear History</button>
+        <div class="history-header" id="transactionHistoryToggle" style="cursor: pointer; padding: 10px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; justify-content: flex-start; gap: 10px; transition: background-color 0.2s;">
+            <h2 style="margin: 0; font-size: 1.3em; color: #333;"><i class="fas fa-history"></i> Transaction History</h2>
+            <i class="fas fa-chevron-down" id="transactionHistoryIcon" style="color: #6c757d; font-size: 1.2em;"></i>
         </div>
-        <div class="filter-section" style="padding: 15px; margin-top: 10px; margin-bottom: 10px; gap: 15px;">
-            <div class="filter-group"> <label for="historyDateFrom"><i class="fas fa-calendar-alt"></i> From:</label> <input type="date" id="historyDateFrom"> </div>
-            <div class="filter-group"> <label for="historyDateTo"><i class="fas fa-calendar-alt"></i> To:</label> <input type="date" id="historyDateTo"> </div>
-            <div class="filter-group"> <button id="resetHistoryFilter" style="background-color: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;"><i class="fas fa-undo"></i> Reset</button> </div>
-        </div>
-        <div class="table-container">
-            <table id="historyTable">
-                <thead> <tr> <th>Date & Time</th> <th>Action</th> <th>Material Code</th> <th>Details</th> </tr> </thead>
-                <tbody id="historyTableBody"></tbody>
-            </table>
+        <div id="transactionHistoryContent" style="display: none; padding-top: 10px;">
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+                <button id="clearHistoryButton"><i class="fas fa-trash-alt"></i> Clear History</button>
+            </div>
+            <div class="filter-section" style="padding: 15px; margin-top: 0; margin-bottom: 10px; gap: 15px;">
+                <div class="filter-group"> <label for="historyDateFrom"><i class="fas fa-calendar-alt"></i> From:</label> <input type="date" id="historyDateFrom"> </div>
+                <div class="filter-group"> <label for="historyDateTo"><i class="fas fa-calendar-alt"></i> To:</label> <input type="date" id="historyDateTo"> </div>
+                <div class="filter-group"> <button id="resetHistoryFilter" style="background-color: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;"><i class="fas fa-undo"></i> Reset</button> </div>
+            </div>
+            <div class="table-container">
+                <table id="historyTable">
+                    <thead> <tr> <th>Date & Time</th> <th>Action</th> <th>Material Code</th> <th>Details</th> </tr> </thead>
+                    <tbody id="historyTableBody"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -514,7 +524,10 @@
         compareVarianceButton = document.getElementById('compareVarianceButton'),
         varianceTableBody = document.getElementById('varianceTableBody'),
         varianceErrorMessage = document.getElementById('varianceErrorMessage'),
-        closeVarianceModalButton = document.getElementById('closeVarianceModalButton');
+        closeVarianceModalButton = document.getElementById('closeVarianceModalButton'),
+        transactionHistoryToggle = document.getElementById('transactionHistoryToggle'),
+        transactionHistoryContent = document.getElementById('transactionHistoryContent'),
+        transactionHistoryIcon = document.getElementById('transactionHistoryIcon');
 
         let loadedWorkbook = null, originalRowsOrder = [], transactionHistory = [], currentEditingRow = null, pendingAction = null;
         let bulkWithdrawQuantities = {};
@@ -1467,6 +1480,18 @@
                 movementFilterOptions.style.display = 'none';
             }
             applyFiltersAndSort();
+        });
+
+        transactionHistoryToggle.addEventListener('click', () => {
+            if (transactionHistoryContent.style.display === 'none') {
+                transactionHistoryContent.style.display = 'block';
+                transactionHistoryIcon.classList.remove('fa-chevron-down');
+                transactionHistoryIcon.classList.add('fa-chevron-up');
+            } else {
+                transactionHistoryContent.style.display = 'none';
+                transactionHistoryIcon.classList.remove('fa-chevron-up');
+                transactionHistoryIcon.classList.add('fa-chevron-down');
+            }
         });
 
         [historyDateFrom, historyDateTo].forEach(el => el.addEventListener('change', () => renderHistoryLog(searchBar.value.toLowerCase())));
