@@ -1359,6 +1359,28 @@
             });
         });
 
+        function handleBulkDelFocusShift() {
+            setTimeout(() => {
+                const capacity = bulkDelPalletCapacity.value;
+                if (capacity && capacity.trim() !== '') {
+                    bulkDelQtyInput.focus();
+                } else {
+                    bulkDelPalletCapacity.focus();
+                }
+            }, 10);
+        }
+
+        // Datalist selection detection via keyboard native change event
+        bulkDelItemSearch.addEventListener('change', () => {
+            const typedValue = bulkDelItemSearch.value.trim().toLowerCase();
+            const options = Array.from(itemListBulkDatalist.options);
+            const exactMatch = options.some(opt => opt.value.toLowerCase() === typedValue);
+
+            if (exactMatch) {
+                handleBulkDelFocusShift();
+            }
+        });
+
         // If the user selects an item from the datalist dropdown (e.g. via Click or Enter),
         // we capture the 'input' event with 'insertReplacementText' and immediately shift focus.
         bulkDelItemSearch.addEventListener('input', (e) => {
@@ -1389,14 +1411,7 @@
 
             // Datalist selection detection
             if (e.inputType === 'insertReplacementText') {
-                setTimeout(() => {
-                    const capacity = bulkDelPalletCapacity.value;
-                    if (capacity && capacity.trim() !== '') {
-                        bulkDelQtyInput.focus();
-                    } else {
-                        bulkDelPalletCapacity.focus();
-                    }
-                }, 10);
+                handleBulkDelFocusShift();
             }
         });
 
@@ -1405,7 +1420,7 @@
                 if (e.key === 'Tab') e.preventDefault(); // allow enter to select datalist item
 
                 setTimeout(() => {
-                    // Prevent shifting focus twice if 'insertReplacementText' already handled it
+                    // Prevent shifting focus twice if 'insertReplacementText' or 'change' already handled it
                     if (document.activeElement === bulkDelQtyInput || document.activeElement === bulkDelPalletCapacity) return;
 
                     const typedValue = bulkDelItemSearch.value.trim().toLowerCase();
@@ -1424,6 +1439,11 @@
                             if (!firstMatch && optionValue.includes(typedValue)) {
                                 firstMatch = option.value;
                             }
+                        }
+
+                        if (exactMatch) {
+                            handleBulkDelFocusShift();
+                            return;
                         }
 
                         if (!exactMatch && firstMatch) {
@@ -1761,9 +1781,18 @@
         // Capture datalist selection explicitly
         bulkWithdrawItemSearch.addEventListener('input', (e) => {
             if (e.inputType === 'insertReplacementText') {
-                setTimeout(() => {
-                    bulkWithdrawQtyInput.focus();
-                }, 10);
+                setTimeout(() => bulkWithdrawQtyInput.focus(), 10);
+            }
+        });
+
+        // Capture datalist selection via keyboard change event
+        bulkWithdrawItemSearch.addEventListener('change', () => {
+            const typedValue = bulkWithdrawItemSearch.value.trim().toLowerCase();
+            const options = Array.from(itemListWithdrawDatalist.options);
+            const exactMatch = options.some(opt => opt.value.toLowerCase() === typedValue);
+
+            if (exactMatch) {
+                setTimeout(() => bulkWithdrawQtyInput.focus(), 10);
             }
         });
 
@@ -1792,13 +1821,17 @@
                             }
                         }
 
+                        if (exactMatch) {
+                            bulkWithdrawQtyInput.focus();
+                            return;
+                        }
+
                         if (!exactMatch && firstMatch) {
                             bulkWithdrawItemSearch.value = firstMatch;
+                            bulkWithdrawQtyInput.focus();
                         }
                     }
-
-                    bulkWithdrawQtyInput.focus();
-                }, 50);
+                }, 150); // increased timeout to let native datalist event win
             }
         });
 
