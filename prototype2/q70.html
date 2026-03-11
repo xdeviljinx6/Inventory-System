@@ -1256,7 +1256,7 @@
                             e.preventDefault(); // prevent blur
                             input.value = opt.textContent;
                             dropdown.style.display = 'none';
-                            saveBreakdownButton.click(); // Save and close instantly
+                            saveBreakdownButton.focus(); // Move focus to save button so the next Enter saves the form
                         });
                         dropdown.appendChild(opt);
                     });
@@ -1294,13 +1294,14 @@
                     } else if (e.key === 'Enter') {
                         if (dropdown.style.display === 'block' && options.length > 0 && activeIndex > -1) {
                             e.preventDefault();
+                            e.stopPropagation(); // Prevent modal's global Enter listener from catching this and saving
                             input.value = options[activeIndex].textContent;
                             dropdown.style.display = 'none';
-                            saveBreakdownButton.click(); // Save and close instantly
+                            saveBreakdownButton.focus(); // Move focus to save button so the next Enter saves the form
                         }
-                        // If dropdown is NOT open, we do NOT prevent default.
+                        // If dropdown is NOT open, we do NOT prevent default or stop propagation.
                         // The event bubbles up to editBreakdownModal.addEventListener('keydown')
-                        // which natively clicks saveBreakdownButton anyway.
+                        // which natively clicks saveBreakdownButton to save the form.
                     } else if (e.key === 'Tab') {
                         dropdown.style.display = 'none';
                     }
