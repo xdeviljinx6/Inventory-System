@@ -1359,11 +1359,55 @@
             });
         });
 
+        // If the user selects an item from the datalist dropdown (e.g. via Click or Enter),
+        // we capture the 'input' event with 'insertReplacementText' and immediately shift focus.
+        bulkDelItemSearch.addEventListener('input', (e) => {
+            const code = bulkDelItemSearch.value.trim();
+            if (!code) return;
+
+            if (palletCapacities[code]) {
+                bulkDelPalletCapacity.value = palletCapacities[code];
+            } else {
+                const row = originalRowsOrder.find(r => r.dataset.code === code);
+                if (row && row.dataset.remarks) {
+                    try {
+                        const remarksArr = JSON.parse(row.dataset.remarks);
+                        if (remarksArr.length > 0) {
+                            const firstRemark = remarksArr[0];
+                            const match = firstRemark.match(/(\d+)\s*PCS\/PLT/i);
+                            if (match && match[1]) {
+                                bulkDelPalletCapacity.value = match[1];
+                                palletCapacities[code] = match[1];
+                                localStorage.setItem('palletCapacities', JSON.stringify(palletCapacities));
+                            }
+                        }
+                    } catch (err) {
+                        console.error("Error parsing remarks for pallet capacity auto-fill", err);
+                    }
+                }
+            }
+
+            // Datalist selection detection
+            if (e.inputType === 'insertReplacementText') {
+                setTimeout(() => {
+                    const capacity = bulkDelPalletCapacity.value;
+                    if (capacity && capacity.trim() !== '') {
+                        bulkDelQtyInput.focus();
+                    } else {
+                        bulkDelPalletCapacity.focus();
+                    }
+                }, 10);
+            }
+        });
+
         bulkDelItemSearch.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === 'Tab') {
                 if (e.key === 'Tab') e.preventDefault(); // allow enter to select datalist item
 
                 setTimeout(() => {
+                    // Prevent shifting focus twice if 'insertReplacementText' already handled it
+                    if (document.activeElement === bulkDelQtyInput || document.activeElement === bulkDelPalletCapacity) return;
+
                     const typedValue = bulkDelItemSearch.value.trim().toLowerCase();
 
                     if (typedValue) {
@@ -1714,11 +1758,22 @@
             });
         });
 
+        // Capture datalist selection explicitly
+        bulkWithdrawItemSearch.addEventListener('input', (e) => {
+            if (e.inputType === 'insertReplacementText') {
+                setTimeout(() => {
+                    bulkWithdrawQtyInput.focus();
+                }, 10);
+            }
+        });
+
         bulkWithdrawItemSearch.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === 'Tab') {
                 if (e.key === 'Tab') e.preventDefault(); // allow enter to select datalist item
 
                 setTimeout(() => {
+                    if (document.activeElement === bulkWithdrawQtyInput) return; // Already focused
+
                     const typedValue = bulkWithdrawItemSearch.value.trim().toLowerCase();
 
                     if (typedValue) {
@@ -1743,7 +1798,7 @@
                     }
 
                     bulkWithdrawQtyInput.focus();
-                }, 10);
+                }, 50);
             }
         });
 
