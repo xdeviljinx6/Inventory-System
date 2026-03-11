@@ -1149,7 +1149,86 @@
         function applyBulkClearFilters() { const itemType = document.getElementById('itemTypeFilter_bulk').value; const remarkType = document.getElementById('remarksFilter_bulk').value; const dataType = dataPresenceFilter_bulk.value; const filteredRows = originalRowsOrder.filter(row => { const code = row.dataset.code.toUpperCase(); const remarks = JSON.parse(row.dataset.remarks || '[]').map(r => r.toLowerCase().trim()); const qtyText = row.cells[1].textContent.trim(); const passesItem = itemType === 'ALL' || (itemType === 'LBL' && code.startsWith('LBL')) || (itemType === 'CTN' && code.startsWith('CTN')) || (itemType === 'PLASTIC' && (code.startsWith('BAG') || code.includes('BUNDLE'))) || (itemType === 'OTHERS' && !/^(LBL|CTN|BAG)|BUNDLE/.test(code)); const passesData = dataType === 'ALL' || (dataType === 'WITH_DATA' && qtyText) || (dataType === 'WITHOUT_DATA' && !qtyText); let passesRemark = false; const hasHold = remarks.some(r => r.startsWith('hold')); const hasApproved = remarks.some(r => r.startsWith('approve') || r.startsWith('approved')); const hasOld = remarks.some(r => r.startsWith('first out') || r.startsWith('old')); const hasAnyRemark = remarks.some(r => r !== ''); switch (remarkType) { case 'ALL': passesRemark = true; break; case 'HOLD': passesRemark = hasHold; break; case 'APPROVED': passesRemark = hasApproved; break; case 'FIRSTOUT_OLD': passesRemark = hasOld; break; case 'NO_REMARK': passesRemark = !hasAnyRemark; break; case 'OTHER_REMARKS': passesRemark = hasAnyRemark && !hasHold && !hasApproved && !hasOld; break; } return passesItem && passesRemark && passesData; }); populateBulkClearList(filteredRows); }
         function handleFileSelect(file) { if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { loadedWorkbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' }); excelSheetSelect.innerHTML = ''; loadedWorkbook.SheetNames.forEach(name => { excelSheetSelect.innerHTML += `<option value="${name}">${name}</option>`; }); handleSheetChange(); importDataModal.style.display = 'block'; importErrorMessageDiv.textContent = ''; } catch (err) { importErrorMessageDiv.textContent = 'Error reading file.'; } }; reader.readAsArrayBuffer(file); }
         function handleSheetChange() { const sheetName = excelSheetSelect.value; const worksheet = loadedWorkbook.Sheets[sheetName]; const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 }); stockingQtyDateSelectModal.innerHTML = '<option value="">Do not import</option>'; if (data.length >= STOCKING_QTY_ROW_EXCEL_INDEX) { const headerRow = data[5] || []; let counter = 1; headerRow.forEach((h, i) => { if (typeof h === 'string' && h.trim().toLowerCase().includes('stocking qty')) { stockingQtyDateSelectModal.innerHTML += `<option value="${i}">Stocking Qty ${counter++}</option>`; } }); } }
-        function generateRemarksInputs(numParts, remarks) { dynamicRemarksContainer.innerHTML = ''; for (let i = 0; i < numParts; i++) { const inputGroup = document.createElement('div'); inputGroup.className = 'item-input'; const label = document.createElement('label'); label.textContent = `Remarks for Part ${i + 1}:`; const input = document.createElement('input'); input.type = 'text'; input.value = remarks[i] || ''; inputGroup.append(label, input); dynamicRemarksContainer.appendChild(inputGroup); } };
+        function generateRemarksInputs(numParts, remarks) {
+            dynamicRemarksContainer.innerHTML = '';
+            for (let i = 0; i < numParts; i++) {
+                const inputGroup = document.createElement('div');
+                inputGroup.className = 'item-input';
+                const label = document.createElement('label');
+                label.textContent = `Remarks for Part ${i + 1}:`;
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = remarks[i] || '';
+                input.setAttribute('list', 'sharedRemarksDatalist');
+
+                // Add autocomplete and focus-shift logic
+                const focusNextOrSave = () => {
+                    setTimeout(() => {
+                        const inputs = Array.from(dynamicRemarksContainer.querySelectorAll('input'));
+                        const currentIndex = inputs.indexOf(input);
+                        if (currentIndex > -1 && currentIndex < inputs.length - 1) {
+                            inputs[currentIndex + 1].focus();
+                        } else {
+                            saveBreakdownButton.focus();
+                        }
+                    }, 10);
+                };
+
+                input.addEventListener('input', (e) => {
+                    if (e.inputType === 'insertReplacementText') {
+                        focusNextOrSave();
+                    }
+                });
+
+                input.addEventListener('change', () => {
+                    const typedValue = input.value.trim().toLowerCase();
+                    const options = Array.from(document.getElementById('sharedRemarksDatalist').options);
+                    const exactMatch = options.some(opt => opt.value.toLowerCase() === typedValue);
+                    if (exactMatch) {
+                        focusNextOrSave();
+                    }
+                });
+
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === 'Tab') {
+                        if (e.key === 'Tab') e.preventDefault();
+                        setTimeout(() => {
+                            const typedValue = input.value.trim().toLowerCase();
+                            if (typedValue) {
+                                let exactMatch = false;
+                                let firstMatch = null;
+                                const options = Array.from(document.getElementById('sharedRemarksDatalist').options);
+                                for (const option of options) {
+                                    const optionValue = option.value.toLowerCase();
+                                    if (optionValue === typedValue) {
+                                        exactMatch = true;
+                                        break;
+                                    }
+                                    if (!firstMatch && optionValue.includes(typedValue)) {
+                                        firstMatch = option.value;
+                                    }
+                                }
+                                if (exactMatch) {
+                                    focusNextOrSave();
+                                    return;
+                                }
+                                if (!exactMatch && firstMatch) {
+                                    input.value = firstMatch;
+                                    focusNextOrSave();
+                                    return; // early return so we don't refocus twice
+                                }
+                            }
+                            focusNextOrSave(); // fallback
+                        }, 150);
+                    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                        // let datalist arrow navigation work natively
+                    }
+                });
+
+                inputGroup.append(label, input);
+                dynamicRemarksContainer.appendChild(inputGroup);
+            }
+        };
         function getWithdrawableStock(row) { const stockingQty = row.dataset.stockingQty; const remarks = JSON.parse(row.dataset.remarks || '[]'); const parts = getBreakdownParts(formatStockingQty(stockingQty)); let total = 0; parts.forEach((part, index) => { const remark = (remarks[index] || '').toLowerCase(); if (!remark.startsWith('hold')) { total += calculateSingleStockingQtyTotal(part); } }); return total; };
 
         function performWithdrawal(materialCode, withdrawAmount) {
