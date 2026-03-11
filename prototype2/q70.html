@@ -414,7 +414,17 @@
             <div style="display:flex;gap:10px;margin-bottom:15px;">
             <div class="item-input" style="flex:1;">
                 <label>Shared Remarks:</label>
-                <input type="text" id="bulkDelSharedRemarks" placeholder="Optional">
+                <input type="text" id="bulkDelSharedRemarks" list="sharedRemarksDatalist" placeholder="Optional">
+                <datalist id="sharedRemarksDatalist">
+                    <option value="approved">
+                    <option value="approved temp specs">
+                    <option value="approved new declaration">
+                    <option value="old">
+                    <option value="first out">
+                    <option value="hold">
+                    <option value="hold temp specs">
+                    <option value="hold new declaration">
+                </datalist>
             </div>
             <div class="item-input" style="flex:1;">
                 <label>Shared Date:</label>
@@ -1377,8 +1387,8 @@
 
         bulkDeliveryInputs.forEach((input, index) => {
             input.addEventListener('keydown', (e) => {
-                // If it's the search input with a datalist, let native arrow navigation work for the dropdown
-                if (input === bulkDelItemSearch && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+                // If it's an input with a datalist, let native arrow navigation work for the dropdown
+                if ((input === bulkDelItemSearch || input === bulkDelSharedRemarks) && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
                     return;
                 }
 
@@ -1396,6 +1406,58 @@
                     }
                 }
             });
+        });
+
+        // Autocomplete and focus logic for Shared Remarks Datalist
+        bulkDelSharedRemarks.addEventListener('input', (e) => {
+            if (e.inputType === 'insertReplacementText') {
+                setTimeout(() => bulkDelSharedDate.focus(), 10);
+            }
+        });
+
+        bulkDelSharedRemarks.addEventListener('change', () => {
+            const typedValue = bulkDelSharedRemarks.value.trim().toLowerCase();
+            const options = Array.from(document.getElementById('sharedRemarksDatalist').options);
+            const exactMatch = options.some(opt => opt.value.toLowerCase() === typedValue);
+            if (exactMatch) {
+                setTimeout(() => bulkDelSharedDate.focus(), 10);
+            }
+        });
+
+        bulkDelSharedRemarks.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === 'Tab') {
+                if (e.key === 'Tab') e.preventDefault();
+                setTimeout(() => {
+                    if (document.activeElement === bulkDelSharedDate) return;
+
+                    const typedValue = bulkDelSharedRemarks.value.trim().toLowerCase();
+                    if (typedValue) {
+                        let exactMatch = false;
+                        let firstMatch = null;
+                        const options = Array.from(document.getElementById('sharedRemarksDatalist').options);
+                        for (const option of options) {
+                            const optionValue = option.value.toLowerCase();
+                            if (optionValue === typedValue) {
+                                exactMatch = true;
+                                break;
+                            }
+                            if (!firstMatch && optionValue.includes(typedValue)) {
+                                firstMatch = option.value;
+                            }
+                        }
+                        if (exactMatch) {
+                            bulkDelSharedDate.focus();
+                            return;
+                        }
+                        if (!exactMatch && firstMatch) {
+                            bulkDelSharedRemarks.value = firstMatch;
+                            bulkDelSharedDate.focus();
+                        }
+                    } else {
+                        bulkDelSharedDate.focus();
+                    }
+                }, 150);
+            }
         });
 
         function handleBulkDelFocusShift() {
