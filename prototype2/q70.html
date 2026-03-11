@@ -134,6 +134,9 @@
         #transactionHistoryToggle:hover { background-color: #e2e6ea !important; }
         body.dark-mode #transactionHistoryToggle:hover { background-color: #4b5563 !important; }
 
+        body.dark-mode .withdraw-qty-label { color: #d1d5db; }
+        body.dark-mode .withdraw-total-label { color: #fff; }
+
         .print-options-container { margin: 15px 0; display: flex; flex-direction: column; gap: 10px; border: 1px solid #e5e7eb; padding: 15px; border-radius: 12px; background-color: #f9fafb; }
         body.dark-mode .print-options-container { background-color: #374151; border-color: #4b5563; }
         body.dark-mode .print-options-container p { color: #60a5fa !important; }
@@ -149,6 +152,10 @@
         body.dark-mode #exportExcelButton { background-color: #6b7280; color: white; }
         body.dark-mode #printInventoryButton { background-color: #f59e0b; color: white; }
         body.dark-mode #clearInventoryButton { background-color: #ef4444; color: white; }
+
+        body.dark-mode .bulk-del-item { background-color: #374151 !important; border-color: #4b5563 !important; }
+        body.dark-mode .bulk-del-item input { background-color: #1f2937; color: #fff; border-color: #4b5563; }
+        body.dark-mode .bulk-del-item input::placeholder { color: #9ca3af; }
 
         body.dark-mode .bulk-del-item { background-color: #374151 !important; border-color: #4b5563 !important; }
         body.dark-mode .bulk-del-item input { background-color: #1f2937; color: #fff; border-color: #4b5563; }
@@ -1560,12 +1567,20 @@
             pendingWithdrawalListContainer.innerHTML = pendingBulkWithdrawals.map((item, idx) => {
                 const totalWithdrawQty = calculateSingleStockingQtyTotal(formatStockingQty(item.qty));
                 return `
-                <div class="bulk-del-item" style="flex-direction: row; align-items: center; justify-content: space-between; padding: 10px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb; margin-bottom: 5px;">
-                    <div style="flex-grow: 1;">
-                        <span style="font-weight: bold; font-size: 1.1em; display:block;">${item.code}</span>
-                        <span style="font-size: 0.9em; color: #555;">Qty Breakdown: ${item.qty} (Total: <strong>${totalWithdrawQty.toLocaleString()}</strong>)</span>
+                <div class="bulk-del-item" style="flex-direction: column; align-items: stretch; gap: 10px; padding: 15px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb; margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: bold; font-size: 1.2em;">${item.code}</span>
+                        <button onclick="removeWithdrawalItem(${idx})" style="background: #ef4444; color: white; border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer;"><i class="fas fa-times"></i></button>
                     </div>
-                    <button onclick="removeWithdrawalItem(${idx})" style="background: #ef4444; color: white; border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer;"><i class="fas fa-times"></i></button>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <div class="item-input" style="flex: 1; margin-bottom: 0;">
+                            <label style="font-size: 0.9em; margin-bottom: 4px;" class="withdraw-qty-label">Qty Breakdown:</label>
+                            <input type="text" value="${item.qty}" onchange="updateWithdrawalItemQty(${idx}, this.value, '${item.code}')" style="padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 1.1em; font-weight: bold;">
+                        </div>
+                        <div style="white-space: nowrap; font-size: 1.1em; font-weight: bold;" class="withdraw-total-label">
+                            Total: ${totalWithdrawQty.toLocaleString()}
+                        </div>
+                    </div>
                 </div>
             `;
             }).join('');
@@ -1573,6 +1588,30 @@
 
         window.removeWithdrawalItem = function(idx) {
             pendingBulkWithdrawals.splice(idx, 1);
+            renderWithdrawList();
+        };
+
+        window.updateWithdrawalItemQty = function(idx, newQtyStr, code) {
+            const row = originalRowsOrder.find(r => r.dataset.code === code);
+            if (!row) return;
+
+            const maxWithdrawable = getWithdrawableStock(row);
+            const newTotal = calculateSingleStockingQtyTotal(formatStockingQty(newQtyStr));
+
+            if (newTotal > maxWithdrawable) {
+                alert(`Cannot withdraw ${newTotal.toLocaleString()}.\nOnly ${maxWithdrawable.toLocaleString()} is available for ${code}.`);
+                // Re-render to revert the input field to the previous valid state
+                renderWithdrawList();
+                return;
+            }
+
+            if (newTotal <= 0) {
+                alert('Please enter a valid quantity greater than 0.');
+                renderWithdrawList();
+                return;
+            }
+
+            pendingBulkWithdrawals[idx].qty = newQtyStr;
             renderWithdrawList();
         };
 
