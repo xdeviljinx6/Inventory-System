@@ -572,7 +572,7 @@
 
         let loadedWorkbook = null, originalRowsOrder = [], transactionHistory = [], currentEditingRow = null, pendingAction = null;
         let bulkWithdrawQuantities = {};
-        let palletCapacities = JSON.parse(localStorage.getItem('palletCapacities') || '{}');
+        let palletCapacities = {};
 
         let isLocked = true;
         let inactivityTimer;
@@ -693,9 +693,95 @@
 
         const MATERIAL_CODE_HEADER = 'MATERIAL CODE', STOCKING_QTY_ROW_EXCEL_INDEX = 6, DATA_START_ROW_EXCEL_INDEX = 7;
 
-        function saveInventoryToLocalStorage() { const inventoryData = originalRowsOrder.map(row => ({ code: row.dataset.code, stockingQty: row.dataset.stockingQty, remarks: row.dataset.remarks })); localStorage.setItem('inventoryData', JSON.stringify(inventoryData)); }
-        function loadInventoryFromLocalStorage() { const savedData = localStorage.getItem('inventoryData'); if (savedData) { const inventoryData = JSON.parse(savedData); inventoryTableBody.innerHTML = ''; originalRowsOrder = []; inventoryData.forEach(item => { item.remarks = JSON.parse(item.remarks || '[]'); renderRow(item, false); }); applyFiltersAndSort(); } }
-        function saveHistoryToLocalStorage() { localStorage.setItem('transactionHistory', JSON.stringify(transactionHistory)); }
+        async function saveDataToAPI(dataToSave) {
+            try {
+                const payload = {};
+                const currentPassword = localStorage.getItem('systemPassword') || DEFAULT_PASSWORD;
+
+                if (dataToSave.includes('inventoryData')) {
+                    payload.inventoryData = originalRowsOrder.map(row => ({
+                        code: row.dataset.code,
+                        stockingQty: row.dataset.stockingQty,
+                        remarks: row.dataset.remarks
+                    }));
+                }
+                if (dataToSave.includes('transactionHistory')) {
+                    payload.transactionHistory = transactionHistory;
+                }
+                if (dataToSave.includes('palletCapacities')) {
+                    payload.palletCapacities = palletCapacities;
+                }
+                const response = await fetch('/api/save-data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentPassword}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                    if (response.status === 401) {
+                         document.getElementById('errorMessage').innerHTML = "Warning: Unauthorized database access. Please check your password.";
+                    } else {
+                         throw new Error('Failed to save to database.');
+                    }
+                    return;
+                }
+            } catch (error) {
+                console.error("Database save error:", error);
+                document.getElementById('errorMessage').innerHTML = "Warning: Could not save data to the online database. Please check your connection.";
+            }
+        }
+
+        async function loadDataFromAPI() {
+            try {
+                document.getElementById('errorMessage').innerHTML = '<span style="color:blue;"><i class="fas fa-spinner fa-spin"></i> Loading data from online database...</span>';
+                const currentPassword = localStorage.getItem('systemPassword') || DEFAULT_PASSWORD;
+
+                const response = await fetch('/api/get-data', {
+                    headers: {
+                        'Authorization': `Bearer ${currentPassword}`
+                    }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                         document.getElementById('errorMessage').innerHTML = "Warning: Unauthorized access. The system password does not match the cloud database password.";
+                    } else {
+                         throw new Error('Failed to fetch from database.');
+                    }
+                    return;
+                }
+
+                const dbData = await response.json();
+
+                if (dbData.inventoryData) {
+                    const inventoryData = dbData.inventoryData;
+                    inventoryTableBody.innerHTML = '';
+                    originalRowsOrder = [];
+                    inventoryData.forEach(item => {
+                        item.remarks = typeof item.remarks === 'string' ? JSON.parse(item.remarks || '[]') : (item.remarks || []);
+                        renderRow(item, false);
+                    });
+                }
+                if (dbData.transactionHistory) {
+                    transactionHistory = dbData.transactionHistory;
+                }
+                if (dbData.palletCapacities) {
+                    palletCapacities = dbData.palletCapacities;
+                }
+                applyFiltersAndSort();
+                renderHistoryLog(searchBar.value.toLowerCase());
+                document.getElementById('errorMessage').innerHTML = '';
+            } catch (error) {
+                console.error("Database load error:", error);
+                document.getElementById('errorMessage').innerHTML = 'Error connecting to the online database. Showing empty data.';
+            }
+        }
+
+        function saveInventoryToLocalStorage() { saveDataToAPI(['inventoryData']); }
+        function loadInventoryFromLocalStorage() {}
+        function saveHistoryToLocalStorage() { saveDataToAPI(['transactionHistory']); }
         function logTransaction(action, code = '-', details = '') { const timestamp = new Date(); const newLog = { timestamp: timestamp.toISOString(), action, code, details }; transactionHistory.unshift(newLog); renderHistoryLog(searchBar.value.toLowerCase()); saveHistoryToLocalStorage(); }
         function renderHistoryLog(searchTerm = '') {
             historyTableBody.innerHTML = '';
@@ -722,7 +808,7 @@
                 row.insertCell(3).innerHTML = highlightMatch(log.details, searchTerm);
             });
         }
-        function loadHistoryFromLocalStorage() { const savedHistory = localStorage.getItem('transactionHistory'); if (savedHistory) { transactionHistory = JSON.parse(savedHistory); renderHistoryLog(searchBar.value.toLowerCase()); } }
+        function loadHistoryFromLocalStorage() {}
         function updateDateTimeAndShift() { const now = new Date(); const year = now.getFullYear(); const month = String(now.getMonth() + 1).padStart(2, '0'); const day = String(now.getDate()).padStart(2, '0'); currentDateInput.value = `${year}-${month}-${day}`; const hours = String(now.getHours()).padStart(2, '0'); const minutes = String(now.getMinutes()).padStart(2, '0'); currentTimeInput.value = `${hours}:${minutes}`; const currentHour = now.getHours(); if (currentHour >= 6 && currentHour < 18) { currentShiftSelect.value = 'Day Shift'; } else { currentShiftSelect.value = 'Night Shift'; } }
         function formatStockingQty(qty) { if (!qty) return ''; let s = String(qty).trim(); s = s.replace(/\s*(\+|\||l|L)\s*/g, '|'); const parts = s.split('|').filter(part => part.trim() !== '').map(part => { let p = part.trim(); p = p.replace(/\s*(\*|x|X)\s*/g, '×'); return p; }); return parts.join(' | '); }
         function inferCapacity(stockingQty) {
@@ -1147,7 +1233,7 @@
                         capData.forEach(c => {
                             palletCapacities[c['Material Code']] = c['Pallet Capacity'];
                         });
-                        localStorage.setItem('palletCapacities', JSON.stringify(palletCapacities));
+                        saveDataToAPI(['palletCapacities']);
                     }
 
                     logTransaction('RESTORE', '-', `Full inventory state restored from ${file.name}.`);
@@ -1660,7 +1746,7 @@
                             if (match && match[1]) {
                                 bulkDelPalletCapacity.value = match[1];
                                 palletCapacities[code] = match[1];
-                                localStorage.setItem('palletCapacities', JSON.stringify(palletCapacities));
+                                saveDataToAPI(['palletCapacities']);
                             }
                         }
                     } catch (err) {
@@ -1768,7 +1854,7 @@
 
             if (!isNaN(capacity) && capacity > 0) {
                 palletCapacities[code] = capacity;
-                localStorage.setItem('palletCapacities', JSON.stringify(palletCapacities));
+                saveDataToAPI(['palletCapacities']);
 
                 const totalQty = calculateSingleStockingQtyTotal(formatStockingQty(qty));
                 qty = generateBreakdownWithCapacity(totalQty, capacity);
@@ -1908,7 +1994,7 @@
         openImportModalButton.addEventListener('click', () => { checkAccess(() => { fileOpsModal.style.display = 'none'; const fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.accept = ".xlsx, .xls"; fileInput.onchange = e => handleFileSelect(e.target.files[0]); fileInput.click(); }); });
 
         clearInventoryButton.addEventListener('click', () => { checkAccess(() => { fileOpsModal.style.display = 'none'; clearChoiceModal.style.display = 'block'; }); });
-        clearHistoryButton.addEventListener('click', () => { checkAccess(() => { if (confirm('Are you sure?')) { transactionHistory = []; historyTableBody.innerHTML = ''; localStorage.removeItem('transactionHistory'); logTransaction('CLEAR HISTORY', '-', 'Transaction history cleared.'); } }); });
+        clearHistoryButton.addEventListener('click', () => { checkAccess(() => { if (confirm('Are you sure?')) { transactionHistory = []; historyTableBody.innerHTML = ''; logTransaction('CLEAR HISTORY', '-', 'Transaction history cleared.'); } }); });
         inventoryTableBody.addEventListener('click', (event) => { const targetCell = event.target.closest('.editable-breakdown'); if (targetCell) {
             checkAccess(() => {
                 currentEditingRow = targetCell.closest('tr'); editBreakdownInput.value = formatStockingQty(currentEditingRow.dataset.stockingQty); const remarks = JSON.parse(currentEditingRow.dataset.remarks || '[]'); const parts = getBreakdownParts(formatStockingQty(currentEditingRow.dataset.stockingQty)); generateRemarksInputs(parts.length, remarks); editBreakdownModal.style.display = 'block';
@@ -2341,8 +2427,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             updateDateTimeAndShift();
-            loadInventoryFromLocalStorage();
-            loadHistoryFromLocalStorage();
+            loadDataFromAPI();
 
             const savedUserName = localStorage.getItem('userName');
             if (savedUserName) userNameInput.value = savedUserName;
