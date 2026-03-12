@@ -1,6 +1,7 @@
-import { Redis } from '@upstash/redis';
+import Redis from 'ioredis';
 
-const redis = Redis.fromEnv();
+// Initialize the Redis client using the standard connection string from Vercel
+const redis = new Redis(process.env.REDIS_URL);
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -29,16 +30,17 @@ export default async function handler(req, res) {
   }
 
   try {
-    const [inventoryData, transactionHistory, palletCapacities] = await Promise.all([
+    const [inventoryDataStr, transactionHistoryStr, palletCapacitiesStr] = await Promise.all([
       redis.get('cohin_inventoryData'),
       redis.get('cohin_transactionHistory'),
       redis.get('cohin_palletCapacities')
     ]);
 
+    // ioredis returns strings, so we need to parse them back into JSON objects
     return res.status(200).json({
-      inventoryData: inventoryData || null,
-      transactionHistory: transactionHistory || null,
-      palletCapacities: palletCapacities || null
+      inventoryData: inventoryDataStr ? JSON.parse(inventoryDataStr) : null,
+      transactionHistory: transactionHistoryStr ? JSON.parse(transactionHistoryStr) : null,
+      palletCapacities: palletCapacitiesStr ? JSON.parse(palletCapacitiesStr) : null
     });
   } catch (error) {
     console.error("Error fetching data from Redis:", error);

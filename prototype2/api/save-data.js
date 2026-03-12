@@ -1,6 +1,7 @@
-import { Redis } from '@upstash/redis';
+import Redis from 'ioredis';
 
-const redis = Redis.fromEnv();
+// Initialize the Redis client using the standard connection string from Vercel
+const redis = new Redis(process.env.REDIS_URL);
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -33,16 +34,17 @@ export default async function handler(req, res) {
 
     const pipeline = redis.pipeline();
 
+    // ioredis needs objects to be stringified before storing
     if (inventoryData !== undefined) {
-      pipeline.set('cohin_inventoryData', inventoryData);
+      pipeline.set('cohin_inventoryData', JSON.stringify(inventoryData));
     }
 
     if (transactionHistory !== undefined) {
-      pipeline.set('cohin_transactionHistory', transactionHistory);
+      pipeline.set('cohin_transactionHistory', JSON.stringify(transactionHistory));
     }
 
     if (palletCapacities !== undefined) {
-      pipeline.set('cohin_palletCapacities', palletCapacities);
+      pipeline.set('cohin_palletCapacities', JSON.stringify(palletCapacities));
     }
 
     await pipeline.exec();
