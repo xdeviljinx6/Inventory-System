@@ -24,7 +24,20 @@ If you don't want to use GitHub right now, you can just drag and drop the folder
 3. From your computer, drag the `prototype2` folder (which contains your `index.html` and other local assets like the Excel files if you want to include them, though not necessary) and drop it into the Vercel dashboard.
 4. Vercel will upload and immediately deploy it. You will get a live link within seconds!
 
+## Setting up the Online Database (Vercel KV / Redis)
+
+To ensure your data is saved in the cloud and synced across all your devices, you need to set up a free Redis database using Upstash Redis on Vercel.
+
+1.  **Go to your Vercel Dashboard** and click on your deployed project.
+2.  Go to the **"Storage"** tab at the top.
+3.  Click **"Create Database"** and select **"Redis"** (provided by Upstash).
+4.  Accept the terms and click **Create**.
+5.  Wait a few moments for the database to be provisioned. Once it's ready, Vercel will automatically add the necessary environment variables (like `KV_REST_API_URL` and `KV_REST_API_TOKEN`) to your project.
+6.  **Important:** You may need to trigger a new deployment for the environment variables to take effect. Go to the "Deployments" tab and click "Redeploy" on your latest commit.
+
+Now, your application will save data directly to the cloud instead of your device's local storage.
+
 ## Things to Note:
 
-- **Local Storage limitation:** Since your app relies heavily on `localStorage`, your "inventory database" will only be saved locally on the browser/device where you opened the website. If you enter data on your PC, you won't see it when you open the same URL on your phone.
-- **Import/Export Excel:** Your backup/restore functionality using Excel will work perfectly! Use this to transfer data between different devices if you need to use the website simultaneously.
+- **Online Database:** Your app now uses Vercel's KV (Redis) database. This means if you enter data on your PC, you will see it immediately when you open the same URL on your phone!
+- **Import/Export Excel:** Your backup/restore functionality using Excel still works perfectly! Use this to download a physical copy of your data for your records.
