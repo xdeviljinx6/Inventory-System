@@ -1,8 +1,20 @@
-import { Redis } from '@upstash/redis';
+import Redis from 'ioredis';
 
-const redis = Redis.fromEnv();
+// Ensure we handle missing REDIS_URL gracefully before initializing
+let redis;
 
 export default async function handler(req, res) {
+  if (!process.env.REDIS_URL) {
+    return res.status(500).json({ error: 'REDIS_URL environment variable is missing on the server.' });
+  }
+
+  if (!redis) {
+     try {
+       redis = new Redis(process.env.REDIS_URL);
+     } catch (e) {
+       return res.status(500).json({ error: 'Failed to initialize Redis client. Invalid REDIS_URL format.' });
+     }
+  }
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
@@ -33,16 +45,17 @@ export default async function handler(req, res) {
 
     const pipeline = redis.pipeline();
 
+    // ioredis needs objects to be stringified before storing
     if (inventoryData !== undefined) {
-      pipeline.set('cohin_inventoryData', inventoryData);
+      pipeline.set('cohin_inventoryData', JSON.stringify(inventoryData));
     }
 
     if (transactionHistory !== undefined) {
-      pipeline.set('cohin_transactionHistory', transactionHistory);
+      pipeline.set('cohin_transactionHistory', JSON.stringify(transactionHistory));
     }
 
     if (palletCapacities !== undefined) {
-      pipeline.set('cohin_palletCapacities', palletCapacities);
+      pipeline.set('cohin_palletCapacities', JSON.stringify(palletCapacities));
     }
 
     await pipeline.exec();

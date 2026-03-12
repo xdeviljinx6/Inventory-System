@@ -11,6 +11,6 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@upstash/redis": "^1.36.4"
+    "ioredis": "^5.10.0"
   }
 }
