@@ -720,16 +720,19 @@
                     body: JSON.stringify(payload)
                 });
                 if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
                     if (response.status === 401) {
-                         document.getElementById('errorMessage').innerHTML = "Warning: Unauthorized database access. Please check your password.";
+                         document.getElementById('errorMessage').innerHTML = "Save Error: Unauthorized database access. Please check your password.";
                     } else {
-                         throw new Error('Failed to save to database.');
+                         const details = errorData.error || errorData.details || response.statusText;
+                         throw new Error(`Failed to save to database. Details: ${details}`);
                     }
                     return;
                 }
+                document.getElementById('errorMessage').innerHTML = '';
             } catch (error) {
                 console.error("Database save error:", error);
-                document.getElementById('errorMessage').innerHTML = "Warning: Could not save data to the online database. Please check your connection.";
+                document.getElementById('errorMessage').innerHTML = `Save Error: ${error.message}`;
             }
         }
 
@@ -745,10 +748,12 @@
                 });
 
                 if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
                     if (response.status === 401) {
-                         document.getElementById('errorMessage').innerHTML = "Warning: Unauthorized access. The system password does not match the cloud database password.";
+                         document.getElementById('errorMessage').innerHTML = "Load Error: Unauthorized access. The system password does not match the cloud database password.";
                     } else {
-                         throw new Error('Failed to fetch from database.');
+                         const details = errorData.error || errorData.details || response.statusText;
+                         throw new Error(`Failed to fetch from database. Details: ${details}`);
                     }
                     return;
                 }
@@ -775,7 +780,7 @@
                 document.getElementById('errorMessage').innerHTML = '';
             } catch (error) {
                 console.error("Database load error:", error);
-                document.getElementById('errorMessage').innerHTML = 'Error connecting to the online database. Showing empty data.';
+                document.getElementById('errorMessage').innerHTML = `Load Error: ${error.message}`;
             }
         }
 
